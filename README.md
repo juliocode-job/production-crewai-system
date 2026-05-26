@@ -64,7 +64,7 @@ graph TD
 ## 📁 Estrutura do Repositório
 
 ```text
-customer-support-crew/
+production-crewai-system/
 ├── app/                       # Pacote principal da aplicação
 │   ├── __init__.py
 │   ├── main.py                # Inicialização do FastAPI, CORS, middlewares e estáticos
