@@ -22,10 +22,10 @@ def safe_print(text):
 def main():
     url_inquiry = "http://127.0.0.1:8000/api/inquiry"
     
-    # Pergunta nova para evitar cache e forçar processamento dos agentes
+    # Pergunta inédita para forçar Cache Miss e gerar novo trace na plataforma CrewAI AMP
     inquiry_text = (
-        "Olá! Gostaria de saber se o SDK de suporte possui compatibilidade com Python 3.8. "
-        "Como realizo a configuração inicial do SDK? Meu e-mail é novo_teste_otel@dominio.com."
+        "Olá! Estou integrando o sistema da minha empresa e gostaria de saber se vocês possuem suporte ao SDK em Java. "
+        "Como faço para baixar a dependência Maven? Meu e-mail é novo_teste_java@dominio.com."
     )
     
     data = json.dumps({"inquiry": inquiry_text}).encode("utf-8")

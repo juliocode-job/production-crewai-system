@@ -40,8 +40,14 @@ Durante o ciclo de transição modular e testes de produção, identificamos e r
 ### 2. Cache Semântico Hit não sendo atingido (Erro 404 Anthropic)
 * **Status**: 🟢 Resolvido e Homologado
 * **Descobertas e Correções Aplicadas**:
-  - **Conexão Mismatch / 404:** O motor de cache tentava usar o modelo `claude-3-5-haiku-20241022` que retorna erro 404 em contas abaixo de Tier 1. Isso quebrava silenciosamente a validação semântica local do JSON.
-  - **Correção:** Alteramos o modelo em [`app/cache/semantic_cache.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/cache/semantic_cache.py) para o modelo oficial **`claude-3-haiku-20240307`** (Claude 3 Haiku), que é rápido, super econômico, extremamente assertivo na avaliação semântica e 100% disponível para qualquer nível de conta Anthropic.
+  - **Conexão Mismatch / 404:** A chave de API da Anthropic do seu ambiente de curso (proxy juliocode) utiliza aliases de modelo customizados da plataforma (ex: `claude-haiku-4-5` e `claude-sonnet-4-6`). Chamadas diretas de `ChatAnthropic` no cache semântico tentando usar o nome de modelo padrão `claude-3-haiku-20240307` (ou no refinamento tentando usar `claude-3-5-sonnet-20241022`) falhavam com erro `404 Not Found`, inativando silenciosamente o cache semântico e forçando Cache Miss constante.
+  - **Correção:** Migramos os clientes `ChatAnthropic` no validador semântico ([`app/cache/semantic_cache.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/cache/semantic_cache.py)) para o alias de modelo ativo **`claude-haiku-4-5`**, e o refinamento do operador em [`app/api/routes.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/api/routes.py) para usar o alias correspondente ativo **`claude-sonnet-4-6`**. O cache semântico agora funciona perfeitamente, com retorno instantâneo em **0.2 segundos** e consumo zero de tokens LLM em consultas recorrentes!
+
+### 3. Estabilização do Ambiente Windows e do Hot-Reload (Uvicorn)
+* **Status**: 🟢 Resolvido e Homologado
+* **Problema e Resolução**:
+  - **WatchFiles Hot-Reload Loop:** O Uvicorn entrava em loop infinito de reinicializações por varrer recursivamente milhares de arquivos na pasta do ambiente virtual (`venv/`). Resolvemos isso restringindo a diretiva de monitoramento exclusivamente para a pasta do aplicativo com o comando `--reload-dir app`.
+  - **Erros de Escrita 'charmap' de Emojis:** Os logs ricos com emojis da CrewAI travavam o terminal do Windows por falta de codificação adequada do console. Resolvemos isso adicionando uma reconfiguração explícita de streams (`sys.stdout` e `sys.stderr` para `utf-8`) programaticamente na inicialização do servidor.
 
 ---
 

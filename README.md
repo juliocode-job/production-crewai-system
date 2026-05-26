@@ -133,7 +133,7 @@ Isso abrirá o navegador para vincular seu ambiente ao dashboard nativo de monit
 ### 6. Executar o Servidor Web
 Para evitar erros de enconding de emojis no terminal do Windows, utilize o comando unificado abaixo:
 ```powershell
-$env:PYTHONIOENCODING='utf-8'; .\venv\Scripts\python -m uvicorn main:app --reload
+$env:PYTHONIOENCODING='utf-8'; .\venv\Scripts\python -m uvicorn main:app --reload --reload-dir app
 ```
 
 ### 7. Usar e Testar a Aplicação
