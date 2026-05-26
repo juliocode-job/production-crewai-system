@@ -1,5 +1,12 @@
 # app/main.py
 import os
+import sys
+
+# Forçar codificação UTF-8 nos fluxos de saída padrão para evitar erros de 'charmap' no terminal do Windows
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

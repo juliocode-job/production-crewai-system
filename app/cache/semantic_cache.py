@@ -48,7 +48,7 @@ Resposta final:"""
 
     try:
         # Usamos o Claude Haiku que é extremamente barato, veloz e ideal para classificação semântica
-        llm = ChatAnthropic(model_name="claude-3-haiku-20240307", temperature=0.0)
+        llm = ChatAnthropic(model_name="claude-haiku-4-5", temperature=0.0)
         response = llm.invoke(prompt)
         ans = response.content.strip()
         if ans.isdigit():

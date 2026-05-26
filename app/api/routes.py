@@ -137,7 +137,7 @@ Responda diretamente com a nova versão do e-mail revisado.
 
 Nova resposta revisada:"""
 
-            llm = ChatAnthropic(model_name="claude-3-5-sonnet-20241022", temperature=0.2) # or claude-opus-4-7
+            llm = ChatAnthropic(model_name="claude-sonnet-4-6", temperature=0.2) # or claude-opus-4-7
             response = llm.invoke(prompt)
             new_draft = response.content.strip()
             
