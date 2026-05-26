@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches e bancos locais
+data/semantic_cache.json
+.db
+.lancedb/
+.crewai/
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+ENV/
+
+# Variáveis de ambiente secretas
+.env
+
+# Logs do sistema
+*.log

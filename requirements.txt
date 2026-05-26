@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+crewai
+crewai-tools
+langchain-anthropic
+numpy
+langfuse
+openinference-instrumentation-crewai
+opentelemetry-api
+opentelemetry-sdk
+python-dotenv

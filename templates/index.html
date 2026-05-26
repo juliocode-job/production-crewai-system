@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Customer Support - CrewAI & Claude 4</title>
+    <!-- Google Fonts: Outfit (Títulos) e Inter (Texto) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Estilos Customizados -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <div class="glow-orb orb-purple"></div>
+    <div class="glow-orb orb-blue"></div>
+
+    <header class="app-header">
+        <div class="logo">
+            <i class="fa-solid fa-users-gear glow-icon"></i>
+            <h1>Customer Support <span>Crew</span></h1>
+        </div>
+        <div class="tagline">
+            <span class="badge badge-model"><i class="fa-solid fa-bolt"></i> Claude 4.x Routing</span>
+            <span class="badge badge-cache"><i class="fa-solid fa-brain"></i> Cache Semântico</span>
+            <span class="badge badge-observability"><i class="fa-solid fa-eye"></i> Langfuse Cloud</span>
+        </div>
+    </header>
+
+    <main class="app-layout">
+        <!-- Coluna da Esquerda: Inputs, Status e Terminal -->
+        <section class="column-left">
+            <!-- Painel de Input -->
+            <div class="glass-card card-input">
+                <h2><i class="fa-solid fa-paper-plane"></i> Nova Dúvida do Cliente</h2>
+                <p class="card-desc">Digite a dúvida técnica, financeira ou geral para acionar a Crew de agentes.</p>
+                <form id="inquiry-form">
+                    <textarea 
+                        id="customer-inquiry" 
+                        placeholder="Ex: Comprei o produto ontem, mas estou recebendo um erro 'ConnectionError code 403' ao tentar inicializar o SDK no Python. O que devo fazer? Quero reembolso se não funcionar."
+                        required></textarea>
+                    <button type="submit" id="btn-submit" class="btn btn-primary">
+                        <span>Iniciar Atendimento</span>
+                        <i class="fa-solid fa-circle-play"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Pipeline de Status dos Agentes -->
+            <div class="glass-card card-pipeline">
+                <h2><i class="fa-solid fa-sitemap"></i> Fluxo de Processamento</h2>
+                <div class="pipeline">
+                    <div class="pipeline-step" id="step-cache">
+                        <div class="step-icon"><i class="fa-solid fa-brain"></i></div>
+                        <div class="step-info">
+                            <h3>1. Cache Semântico</h3>
+                            <p>Buscando similaridade...</p>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="step-triando">
+                        <div class="step-icon"><i class="fa-solid fa-filter"></i></div>
+                        <div class="step-info">
+                            <h3>2. Triagem (Haiku 4.5)</h3>
+                            <p>Categorizando assunto...</p>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="step-resolvendo">
+                        <div class="step-icon"><i class="fa-solid fa-keyboard"></i></div>
+                        <div class="step-info">
+                            <h3>3. Resolução (Sonnet 4.6)</h3>
+                            <p>Buscando manuais...</p>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="step-auditando">
+                        <div class="step-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div class="step-info">
+                            <h3>4. Auditoria (Opus 4.7)</h3>
+                            <p>Formatando & QA...</p>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="step-hitl">
+                        <div class="step-icon"><i class="fa-solid fa-user-check"></i></div>
+                        <div class="step-info">
+                            <h3>5. Aprovação (HITL)</h3>
+                            <p>Aguardando você...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal de Logs em Tempo Real -->
+            <div class="glass-card card-terminal">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <span class="t-btn red"></span>
+                        <span class="t-btn yellow"></span>
+                        <span class="t-btn green"></span>
+                    </div>
+                    <div class="terminal-title">CREWAI AGENTS TERMINAL LOGS</div>
+                    <i class="fa-solid fa-terminal"></i>
+                </div>
+                <div class="terminal-body" id="terminal-body">
+                    <p class="terminal-welcome">Pronto para iniciar. Insira uma pergunta para ver o raciocínio dos agentes em tempo real...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Coluna da Direita: Rascunho / Resposta e HITL Controls -->
+        <section class="column-right">
+            <div class="glass-card card-output" id="card-output">
+                <div class="output-header">
+                    <h2><i class="fa-solid fa-reply-all"></i> Resposta Sugerida</h2>
+                    <span class="status-badge" id="job-status-badge">Ocioso</span>
+                </div>
+
+                <div class="output-content" id="output-content">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-envelope-open-text glow-icon-large"></i>
+                        <h3>Nenhum rascunho gerado ainda</h3>
+                        <p>Envie uma dúvida do cliente para que os agentes gerem uma resposta otimizada e revisada.</p>
+                    </div>
+                </div>
+
+                <!-- Painel de Controle HITL (Human-in-the-Loop) -->
+                <div class="hitl-actions hidden" id="hitl-actions-container">
+                    <div class="hitl-alert">
+                        <i class="fa-solid fa-circle-exclamation animate-pulse"></i>
+                        <div>
+                            <strong>Revisão Humana Necessária (HITL):</strong> O Claude Opus 4.7 gerou a resposta acima. Aprove-a para salvar no cache ou forneça feedback para que os agentes façam ajustes.
+                        </div>
+                    </div>
+                    <div class="feedback-input-wrapper">
+                        <textarea id="human-feedback" placeholder="Digite seu feedback de correção caso queira refinar a resposta. Ex: 'Explique melhor o passo 2 e remova a menção a PIX, aceitamos apenas cartão.'"></textarea>
+                    </div>
+                    <div class="hitl-buttons">
+                        <button class="btn btn-danger" id="btn-reject">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Refinar com Feedback</span>
+                        </button>
+                        <button class="btn btn-success" id="btn-approve">
+                            <i class="fa-solid fa-check-double"></i>
+                            <span>Aprovar e Salvar no Cache</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gerenciamento de Cache Semântico -->
+            <div class="glass-card card-cache-mgr">
+                <div class="cache-header">
+                    <h2><i class="fa-solid fa-database"></i> Banco de Cache Semântico Local</h2>
+                    <button class="btn btn-small" id="btn-refresh-cache"><i class="fa-solid fa-sync"></i> Atualizar</button>
+                </div>
+                <p class="card-desc">Visualização das dúvidas e respostas armazenadas localmente para reuso sem custos de API.</p>
+                <div class="cache-table-wrapper">
+                    <table class="cache-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%">Pergunta (Sanitizada)</th>
+                                <th style="width: 50%">Resposta Registrada</th>
+                                <th style="width: 10%; text-align: center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cache-list-body">
+                            <tr>
+                                <td colspan="3" class="table-empty">Nenhum registro no cache semântico ainda.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Marcadores de Versão -->
+    <footer class="app-footer">
+        <p>© 2026 Customer Support Crew System • Powered by CrewAI, FastAPI & Anthropic Claude Generation 4</p>
+    </footer>
+
+    <!-- jQuery para simplificar requisições -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Lógica Frontend -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
