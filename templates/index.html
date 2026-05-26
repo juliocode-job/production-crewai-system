@@ -28,6 +28,16 @@
             <span class="badge badge-cache"><i class="fa-solid fa-brain"></i> Cache Semântico</span>
             <span class="badge badge-observability"><i class="fa-solid fa-eye"></i> CrewAI AMP</span>
         </div>
+        <div class="user-profile" style="display: flex; align-items: center; gap: 14px;">
+            <span id="username-display" style="font-size: 13px; font-weight: 600; color: #a4f5ff; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-circle-user" style="font-size: 16px;"></i>
+                <span>Carregando...</span>
+            </span>
+            <button id="btn-logout" class="btn btn-small" title="Sair do Dashboard" style="background-color: rgba(255, 62, 62, 0.15); border-color: rgba(255, 62, 62, 0.3); color: #ff8e8e; font-size: 11px; padding: 6px 12px; cursor: pointer;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Sair</span>
+            </button>
+        </div>
     </header>
 
     <main class="app-layout">
@@ -47,6 +57,20 @@
                         <i class="fa-solid fa-circle-play"></i>
                     </button>
                 </form>
+            </div>
+
+            <!-- Histórico de Atendimentos Persistidos -->
+            <div class="glass-card card-history" style="padding: 20px;">
+                <div class="history-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h2 style="margin-bottom: 0;"><i class="fa-solid fa-clock-rotate-left"></i> Histórico Recente</h2>
+                    <span class="badge" style="font-size: 11px; padding: 3px 10px; background-color: rgba(0, 240, 255, 0.05); color: #a4f5ff; border-color: rgba(0, 240, 255, 0.15);" id="history-count">0 atendimentos</span>
+                </div>
+                <p class="card-desc" style="margin-bottom: 12px;">Histórico persistido das dúvidas que você enviou ao sistema.</p>
+                <div class="history-list-wrapper" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--card-border); border-radius: 10px; background-color: rgba(9, 11, 15, 0.3); padding: 4px;">
+                    <div id="history-list-body" style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="text-align: center; padding: 20px; font-style: italic; color: var(--text-secondary); font-size: 11px;">Carregando histórico...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Pipeline de Status dos Agentes -->

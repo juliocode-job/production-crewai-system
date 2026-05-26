@@ -1,0 +1,34 @@
+# Ignorar caches do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Ignorar ambientes virtuais locais
+venv/
+.venv/
+env/
+ENV/
+
+# Ignorar arquivo de variáveis locais (credenciais secretas)
+.env
+
+# Ignorar banco de dados SQLite e caches locais gerados dinamicamente
+data/*.db
+data/semantic_cache.json
+
+# Ignorar diretórios do Git e configurações de IDEs
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Ignorar relatórios de teste e arquivos temporários
+tests/
+.gemini/
+artifacts/
+walkthrough.md
+task.md
+implementation_plan.md

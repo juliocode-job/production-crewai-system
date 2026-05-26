@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - AI Customer Support Crew</title>
+    <!-- Google Fonts: Outfit (Títulos) e Inter (Texto) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Estilos Globais Reutilizados e CSS do Login -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 40px 20px;
+            z-index: 5;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 440px;
+            padding: 40px;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .auth-logo {
+            font-size: 45px;
+            color: var(--primary-neon);
+            text-shadow: 0 0 15px var(--primary-neon);
+            margin-bottom: 15px;
+        }
+
+        .auth-card h1 {
+            font-family: var(--font-heading);
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .auth-card h1 span {
+            background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .auth-card p.subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 16px;
+            transition: color 0.2s ease;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 16px 14px 48px;
+            background-color: rgba(13, 15, 20, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .input-wrapper input:focus + i {
+            color: var(--primary-neon);
+        }
+
+        .auth-btn {
+            width: 100%;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .auth-toggle {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .auth-toggle a {
+            color: var(--primary-neon);
+            text-decoration: none;
+            font-weight: 600;
+            transition: text-shadow 0.2s ease;
+        }
+
+        .auth-toggle a:hover {
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+        }
+
+        .alert-box {
+            background-color: rgba(255, 62, 62, 0.1);
+            border: 1px solid rgba(255, 62, 62, 0.3);
+            color: #ff8e8e;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+            animation: shake 0.3s ease;
+        }
+
+        .alert-box.success {
+            background-color: rgba(57, 211, 83, 0.1);
+            border: 1px solid rgba(57, 211, 83, 0.3);
+            color: #9effad;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <div class="glow-orb orb-purple"></div>
+    <div class="glow-orb orb-blue"></div>
+
+    <div class="login-container">
+        <!-- Card de Autenticação -->
+        <div class="glass-card auth-card">
+            <i class="fa-solid fa-users-gear glow-icon auth-logo"></i>
+            <h1 id="auth-title">Entrar no <span>Crew</span></h1>
+            <p class="subtitle" id="auth-subtitle">Faça login para acessar o painel de atendimento e histórico.</p>
+
+            <!-- Alerta de Erros/Sucesso -->
+            <div id="auth-alert" class="alert-box">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="alert-message">Mensagem de erro aqui.</span>
+            </div>
+
+            <!-- Formulário -->
+            <form id="auth-form">
+                <div class="input-group">
+                    <label for="username">Usuário</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="username" placeholder="Digite seu usuário..." required autocomplete="username">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Senha</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" placeholder="Digite sua senha..." required autocomplete="current-password">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                </div>
+
+                <button type="submit" id="auth-submit-btn" class="btn btn-primary auth-btn">
+                    <span>Entrar no Dashboard</span>
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </button>
+            </form>
+
+            <div class="auth-toggle">
+                <span id="toggle-text">Não possui uma conta?</span>
+                <a href="#" id="toggle-auth-mode">Cadastre-se</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <footer class="app-footer" style="background-color: transparent; border-top: none;">
+        <p>© 2026 Customer Support Crew System • Glassmorphism Authentication System</p>
+    </footer>
+
+    <!-- jQuery para requisições -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let isLoginMode = true;
+
+            // Alternar entre modo Login e Cadastro
+            $('#toggle-auth-mode').on('click', function(e) {
+                e.preventDefault();
+                isLoginMode = !isLoginMode;
+                $('#auth-alert').hide();
+
+                if (isLoginMode) {
+                    $('#auth-title').html('Entrar no <span>Crew</span>');
+                    $('#auth-subtitle').text('Faça login para acessar o painel de atendimento e histórico.');
+                    $('#auth-submit-btn span').text('Entrar no Dashboard');
+                    $('#auth-submit-btn i').attr('class', 'fa-solid fa-arrow-right-to-bracket');
+                    $('#toggle-text').text('Não possui uma conta?');
+                    $('#toggle-auth-mode').text('Cadastre-se');
+                } else {
+                    $('#auth-title').html('Criar Conta no <span>Crew</span>');
+                    $('#auth-subtitle').text('Cadastre um novo usuário para iniciar atendimentos persistentes.');
+                    $('#auth-submit-btn span').text('Criar Minha Conta');
+                    $('#auth-submit-btn i').attr('class', 'fa-solid fa-user-plus');
+                    $('#toggle-text').text('Já possui uma conta?');
+                    $('#toggle-auth-mode').text('Faça Login');
+                }
+            });
+
+            // Envio do formulário
+            $('#auth-form').on('submit', function(e) {
+                e.preventDefault();
+                
+                const username = $('#username').val().trim();
+                const password = $('#password').val();
+                
+                $('#auth-alert').hide();
+                $('#auth-submit-btn').prop('disabled', true).css('opacity', '0.7');
+
+                const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+                
+                $.ajax({
+                    url: endpoint,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ username: username, password: password }),
+                    success: function(response) {
+                        if (isLoginMode) {
+                            // Sucesso no login - Redirecionar para o dashboard
+                            window.location.href = '/';
+                        } else {
+                            // Sucesso no cadastro - Mostrar alerta de sucesso e alternar para login
+                            $('#alert-message').text('Conta criada com sucesso! Faça o login.');
+                            $('#auth-alert').removeClass('success').addClass('success').fadeIn();
+                            $('#username').val(username);
+                            $('#password').val('');
+                            $('#toggle-auth-mode').click(); // Volta para tela de login
+                            $('#auth-submit-btn').prop('disabled', false).css('opacity', '1');
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'Ocorreu um erro no servidor. Tente novamente.';
+                        if (xhr.responseJSON && xhr.responseJSON.detail) {
+                            errorMessage = xhr.responseJSON.detail;
+                        }
+                        $('#alert-message').text(errorMessage);
+                        $('#auth-alert').removeClass('success').fadeIn();
+                        $('#auth-submit-btn').prop('disabled', false).css('opacity', '1');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

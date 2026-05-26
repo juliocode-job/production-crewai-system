@@ -5,7 +5,8 @@ __pycache__/
 
 # Caches e bancos locais
 data/semantic_cache.json
-.db
+*.db*
+data/*.db*
 .lancedb/
 .crewai/
 

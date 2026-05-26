@@ -21,6 +21,11 @@ setup_instrumentation()
 # 2. Inicialização do servidor FastAPI
 app = FastAPI(title="AI Customer Support Dashboard & Crew")
 
+@app.on_event("startup")
+def on_startup():
+    from app.core.database import create_db_and_tables
+    create_db_and_tables()
+
 # 3. Configurar CORS
 app.add_middleware(
     CORSMiddleware,

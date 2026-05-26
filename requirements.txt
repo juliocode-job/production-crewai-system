@@ -9,3 +9,6 @@ openinference-instrumentation-crewai
 opentelemetry-api
 opentelemetry-sdk
 python-dotenv
+sqlmodel
+python-jose[cryptography]
+passlib[bcrypt]

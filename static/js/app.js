@@ -2,11 +2,179 @@
 
 $(document).ready(function() {
     let currentJobId = null;
-    let pollInterval = null;
+    let currentEventSource = null;
     let loggedLinesCount = 0;
 
-    // --- CARREGAR CACHE SEMÂNTICO INICIAL ---
+    // Injeta estilos CSS customizados para os itens do histórico e transições visuais
+    const customStyles = `
+        .history-item {
+            padding: 10px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .history-item:hover {
+            background-color: rgba(0, 240, 255, 0.05) !important;
+            border-color: rgba(0, 240, 255, 0.2) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1.5px);
+        }
+        .history-item.active-item {
+            background-color: rgba(0, 240, 255, 0.08) !important;
+            border-color: var(--primary-neon) !important;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+        #btn-logout:hover {
+            background-color: var(--danger-red) !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 10px rgba(255, 62, 62, 0.4);
+            transform: translateY(-1px);
+        }
+    `;
+    $("<style>").html(customStyles).appendTo("head");
+
+    // --- EXECUÇÕES DE INICIALIZAÇÃO ---
+    checkAuthentication();
     loadCacheTable();
+    loadHistoryList();
+
+    // --- VERIFICAÇÃO DE AUTENTICAÇÃO ---
+    function checkAuthentication() {
+        $.get("/api/auth/me", function(user) {
+            $("#username-display span").text(user.username);
+        }).fail(function() {
+            // Se falhar a requisição de informações do usuário, manda pro login
+            window.location.href = "/login";
+        });
+    }
+
+    // --- CONTROLE DE LOGOUT ---
+    $("#btn-logout").click(function(e) {
+        e.preventDefault();
+        if (confirm("Deseja realmente sair do sistema?")) {
+            $.post("/api/auth/logout", function() {
+                window.location.href = "/login";
+            }).fail(function() {
+                alert("Erro ao realizar logout. Tente novamente.");
+            });
+        }
+    });
+
+    // --- CARREGAR HISTÓRICO DE ATENDIMENTOS ---
+    function loadHistoryList() {
+        $.get("/api/history", function(historyList) {
+            const $listBody = $("#history-list-body");
+            $listBody.empty();
+            
+            $("#history-count").text(`${historyList.length} atendimentos`);
+
+            if (!historyList || historyList.length === 0) {
+                $listBody.append(`
+                    <div style="text-align: center; padding: 20px; font-style: italic; color: var(--text-secondary); font-size: 11px;">
+                        Nenhum atendimento no histórico ainda.
+                    </div>
+                `);
+                return;
+            }
+
+            historyList.forEach(function(item) {
+                const shortInquiry = item.inquiry.length > 40 ? item.inquiry.substring(0, 40) + "..." : item.inquiry;
+                let statusLabel = "";
+                
+                if (item.status === "concluido") {
+                    statusLabel = `<span style="color: var(--success-green);"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Resolvido</span>`;
+                } else if (item.status === "erro") {
+                    statusLabel = `<span style="color: var(--danger-red);"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Falhou</span>`;
+                } else if (item.status === "aguardando_aprovacao") {
+                    statusLabel = `<span style="color: var(--warning-yellow); animation: heartBeat 1.5s infinite ease-in-out;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> HITL</span>`;
+                } else {
+                    statusLabel = `<span style="color: var(--primary-neon);"><i class="fa-solid fa-spinner fa-spin" style="font-size: 8px;"></i> Rodando</span>`;
+                }
+
+                const createdDate = new Date(item.created_at).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                const activeClass = currentJobId === item.job_id ? "active-item" : "";
+
+                $listBody.append(`
+                    <div class="history-item ${activeClass}" data-job-id="${item.job_id}">
+                        <div style="font-size: 12px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                            ${escapeHtml(shortInquiry)}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: var(--text-secondary);">
+                            <span>${createdDate}</span>
+                            ${statusLabel}
+                        </div>
+                    </div>
+                `);
+            });
+
+            // Adicionar evento de clique para carregar histórico
+            $(".history-item").click(function() {
+                const jobId = $(this).data("job-id");
+                selectHistoryItem(jobId);
+            });
+        });
+    }
+
+    // --- CARREGAR DETALHES DE UM ITEM DO HISTÓRICO ---
+    function selectHistoryItem(jobId) {
+        currentJobId = jobId;
+        
+        // Destaca o item selecionado na UI
+        $(".history-item").removeClass("active-item");
+        $(`.history-item[data-job-id="${jobId}"]`).addClass("active-item");
+        
+        if (currentEventSource) {
+            currentEventSource.close();
+            currentEventSource = null;
+        }
+        resetUIForNewRun();
+        
+        $("#btn-submit").prop("disabled", true);
+        appendTerminalLog(`Carregando dados do atendimento #${jobId.substring(0, 8)}...`, "system");
+
+        $.get(`/api/status/${jobId}`, function(job) {
+            loggedLinesCount = 0;
+            // 1. Atualiza os logs do terminal
+            updateTerminalLogs(job.logs);
+
+            // 2. Atualiza os badges de status e pipeline
+            updateUIStatus(job.status);
+            managePipelineVisuals(job.status);
+
+            // 3. Renderiza rascunhos ou respostas prontas
+            if (job.status === "aguardando_aprovacao") {
+                showDraftForReview(job.draft);
+                enableSubmitButton();
+            } else if (job.status === "concluido") {
+                showFinalResponse(job.final_response, job.cache_hit);
+                enableSubmitButton();
+            } else if (job.status === "erro") {
+                $("#output-content").html(`
+                    <div class="empty-state">
+                        <i class="fa-solid fa-circle-exclamation" style="font-size: 48px; color: var(--danger-red);"></i>
+                        <h3 style="margin-top: 15px;">Falha na execução dos agentes</h3>
+                        <p>Os agentes encontraram uma falha crítica. Verifique os logs no terminal de pensamentos.</p>
+                    </div>
+                `);
+                enableSubmitButton();
+            } else {
+                // Se o status for de processamento ativo (ex: rodando / triando), re-inicia o Polling de atualização!
+                appendTerminalLog("Re-inicializando escuta de processamento ativo em tempo real...", "system");
+                startSSEConnection(jobId);
+            }
+        }).fail(function() {
+            appendTerminalLog("❌ Erro ao resgatar detalhes do atendimento selecionado.", "system");
+            enableSubmitButton();
+        });
+    }
 
     // --- SUBMISSÃO DE DÚVIDA DO CLIENTE ---
     $("#inquiry-form").submit(function(e) {
@@ -36,60 +204,88 @@ $(document).ready(function() {
                     appendTerminalLog("Buscando resposta otimizada armazenada...", "system");
                     // Se for cache hit, exibe direto
                     updatePipelineStep("step-cache", "completed");
-                    startPolling(currentJobId);
+                    startSSEConnection(currentJobId);
                 } else {
                     appendTerminalLog("🚀 CACHE MISS: Dúvida inédita enviada aos agentes.", "system");
                     appendTerminalLog("Higienizando dados pessoais sensíveis (PII)...", "system");
                     appendTerminalLog("Iniciando Crew com Claude 4.5 Haiku, 4.6 Sonnet e 4.7 Opus...", "system");
                     updatePipelineStep("step-cache", "completed");
                     updatePipelineStep("step-triando", "active");
-                    startPolling(currentJobId);
+                    startSSEConnection(currentJobId);
                 }
+                
+                // Recarrega a lista do histórico para mostrar a nova dúvida inserida
+                loadHistoryList();
             },
             error: function(err) {
                 appendTerminalLog("❌ Erro ao enviar solicitação: " + (err.responseJSON?.detail || "Erro desconhecido"), "system");
-                $("#btn-submit").prop("disabled", false).find("span").text("Iniciar Atendimento");
-                $("#btn-submit").find("i").removeClass("fa-spinner fa-spin").addClass("fa-circle-play");
+                enableSubmitButton();
             }
         });
     });
 
-    // --- POLLING DE STATUS E LOGS ---
-    function startPolling(jobId) {
+    // --- STREAMING DE STATUS E LOGS VIA SSE ---
+    function startSSEConnection(jobId) {
         loggedLinesCount = 0;
-        if (pollInterval) clearInterval(pollInterval);
+        if (currentEventSource) {
+            currentEventSource.close();
+            currentEventSource = null;
+        }
         
-        pollInterval = setInterval(function() {
-            $.get(`/api/status/${jobId}`, function(job) {
-                // 1. Atualizar logs do terminal
-                updateTerminalLogs(job.logs);
-
-                // 2. Atualizar badges de status na UI
-                updateUIStatus(job.status);
-
-                // 3. Atualizar pipeline de passos
-                managePipelineVisuals(job.status);
-
-                // 4. Se tiver resposta finalizada ou aguardando aprovação
-                if (job.status === "aguardando_aprovacao") {
-                    clearInterval(pollInterval);
-                    showDraftForReview(job.draft);
-                    enableSubmitButton();
-                } else if (job.status === "concluido") {
-                    clearInterval(pollInterval);
-                    showFinalResponse(job.final_response, job.cache_hit);
-                    enableSubmitButton();
-                    loadCacheTable(); // Recarregar tabela de cache
-                } else if (job.status === "erro") {
-                    clearInterval(pollInterval);
-                    enableSubmitButton();
+        appendTerminalLog("Conectando ao canal de streaming em tempo real...", "system");
+        
+        currentEventSource = new EventSource(`/api/jobs/${jobId}/stream`);
+        
+        currentEventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === "log") {
+                    appendTerminalLog(data.message, data.sender);
+                } else if (data.type === "status") {
+                    updateUIStatus(data.status);
+                    managePipelineVisuals(data.status);
+                } else if (data.type === "finished") {
+                    updateUIStatus(data.status);
+                    managePipelineVisuals(data.status);
+                    
+                    if (data.status === "aguardando_aprovacao") {
+                        showDraftForReview(data.draft);
+                        enableSubmitButton();
+                        loadHistoryList(); // Atualiza status na lista lateral
+                    } else if (data.status === "concluido") {
+                        showFinalResponse(data.final_response, data.cache_hit);
+                        enableSubmitButton();
+                        loadCacheTable(); // Recarregar tabela de cache
+                        loadHistoryList(); // Atualiza status na lista lateral
+                    } else if (data.status === "erro") {
+                        $("#output-content").html(`
+                            <div class="empty-state">
+                                <i class="fa-solid fa-circle-exclamation" style="font-size: 48px; color: var(--danger-red);"></i>
+                                <h3 style="margin-top: 15px;">Falha na execução dos agentes</h3>
+                                <p>Os agentes encontraram uma falha crítica. Verifique os logs no terminal de pensamentos.</p>
+                            </div>
+                        `);
+                        enableSubmitButton();
+                        loadHistoryList(); // Atualiza status na lista lateral
+                    }
+                    
+                    currentEventSource.close();
+                    currentEventSource = null;
                 }
-            }).fail(function() {
-                clearInterval(pollInterval);
-                appendTerminalLog("❌ Erro ao consultar status do processamento.", "system");
-                enableSubmitButton();
-            });
-        }, 1200); // Poll a cada 1.2 segundos
+            } catch (err) {
+                console.error("Erro ao interpretar dados de streaming:", err);
+            }
+        };
+        
+        currentEventSource.onerror = function() {
+            if (currentEventSource) {
+                currentEventSource.close();
+                currentEventSource = null;
+            }
+            appendTerminalLog("Conexão streaming finalizada.", "system");
+            enableSubmitButton();
+        };
     }
 
     // --- AUXILIARES DE UI ---
@@ -251,10 +447,11 @@ $(document).ready(function() {
         
         $.post(`/api/approve/${currentJobId}`, function() {
             appendTerminalLog("✅ Resposta aprovada! Registrando no banco de cache semântico...", "system");
-            startPolling(currentJobId); // Roda um poll rápido para atualizar para concluído
+            $("#btn-approve").prop("disabled", false).html('<i class="fa-solid fa-check-double"></i> <span>Aprovar e Salvar no Cache</span>');
+            startSSEConnection(currentJobId);
         }).fail(function() {
             appendTerminalLog("❌ Erro ao registrar aprovação no servidor.", "system");
-            $("#btn-approve").prop("disabled", false).text("Aprovar e Salvar no Cache");
+            $("#btn-approve").prop("disabled", false).html('<i class="fa-solid fa-check-double"></i> <span>Aprovar e Salvar no Cache</span>');
         });
     });
 
@@ -280,15 +477,15 @@ $(document).ready(function() {
                 appendTerminalLog("🔄 Roteando feedback do operador para refinamento com Claude Opus...", "system");
                 $("#hitl-actions-container").addClass("hidden"); // Oculta enquanto refina
                 $("#human-feedback").val(""); // Limpa campo
-                $("#btn-reject").prop("disabled", false).text("Refinar com Feedback");
+                $("#btn-reject").prop("disabled", false).html('<i class="fa-solid fa-arrows-rotate"></i> <span>Refinar com Feedback</span>');
                 $("#btn-approve").prop("disabled", false);
                 
-                // Reinicia polling
-                startPolling(currentJobId);
+                // Reinicia streaming
+                startSSEConnection(currentJobId);
             },
             error: function() {
                 appendTerminalLog("❌ Erro ao enviar feedback de refinamento.", "system");
-                $("#btn-reject").prop("disabled", false).text("Refinar com Feedback");
+                $("#btn-reject").prop("disabled", false).html('<i class="fa-solid fa-arrows-rotate"></i> <span>Refinar com Feedback</span>');
                 $("#btn-approve").prop("disabled", false);
             }
         });
@@ -368,7 +565,6 @@ $(document).ready(function() {
             // Listas ordenadas e não ordenadas
             .replace(/^\s*\-\s+(.*$)/gim, "<li>$1</li>")
             .replace(/^\s*\*\s+(.*$)/gim, "<li>$1</li>")
-            // Envolver listas <li> consecutivas em <ul> (simplificado)
             // Negritos
             .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
             // Itálicos
