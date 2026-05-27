@@ -1,0 +1,91 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install ruff bandit
+
+    - name: Lint with Ruff
+      run: |
+        ruff check app/
+
+    - name: Security scan with Bandit
+      run: |
+        bandit -r app/ -x app/core/security.py -ll
+
+    - name: Run Integration Tests
+      env:
+        ANTHROPIC_API_KEY: "mock_key_for_ci"
+        JWT_SECRET_KEY: "super_secret_key_for_testing_ci"
+        JWT_ALGORITHM: "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      run: |
+        # Start server in the background
+        python -m uvicorn main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+        
+        # Wait for server to boot up
+        for i in {1..10}; do
+          curl -s http://127.0.0.1:8000/ > /dev/null && break
+          echo "Waiting for Uvicorn server..."
+          sleep 1
+        done
+        
+        # Run the automated integration API test
+        python tests/test_api.py
+
+  build-and-push-docker:
+    needs: lint-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Log in to GitHub Container Registry (GHCR)
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=raw,value=latest
+          type=sha,format=short
+
+    - name: Build and Push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
