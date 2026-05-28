@@ -28,14 +28,15 @@ Desenvolvemos um sistema de atendimento ao cliente multicanal de alto nível com
 Durante o ciclo de transição modular e testes de produção, identificamos e resolvemos com precisão cirúrgica todos os problemas que bloqueavam a aplicação:
 
 ### 1. Transição para o Tracing Nativo do CrewAI Platform (AMP)
-* **Status**: 🟢 Homologado via Tracing Nativo do CrewAI
+* **Status**: 🟢 Homologado e Automatizado em Produção (Render)
 * **Descobertas e Transição Aplicada**:
-  - **Gargalos e Erros OTel HTTP (404/Langfuse):** A exportação de telemetria OpenTelemetry (OTel) OTLP HTTP para nuvens públicas do Langfuse frequentemente resultava em erros HTTP 404 (retornando páginas HTML do Next.js) devido a conflitos de rotas de endpoint, diferenças de subpaths regionais e cabeçalhos de Basic Auth. Isso gerava desperdício desnecessário de tokens de rede e logs poluídos.
-  - **Adoção da Observabilidade Nativa:** Para uma integração resiliente e imediata com o painel oficial do **CrewAI Enterprise/Platform (AMP)**, desativamos o provedor customizado OTel em [`app/core/observability.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/core/observability.py).
+  - **Gargalos e Erros OTel HTTP (404/Langfuse):** A exportação de telemetria OpenTelemetry (OTel) OTLP HTTP para nuvens públicas do Langfuse frequentemente resultava em erros HTTP 404 devido a conflitos de rotas de endpoint, diferenças de subpaths regionais e cabeçalhos de Basic Auth.
+  - **Injeção de Credenciais Headless para o Render:** O tracing nativo do CrewAI exige que o arquivo `~/.config/crewai/settings.json` esteja presente no servidor para autenticar na nuvem `app.crewai.com`. Em ambientes headless de container como o Render, não é possível rodar o login interativo CLI `crewai login`.
+  - **Solução de Autenticação Dinâmica:** Atualizamos o arquivo [`app/core/observability.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/core/observability.py) para gerar e injetar dinamicamente as credenciais da plataforma a partir de variáveis de ambiente (`CREWAI_TOOL_REPOSITORY_USERNAME`, `CREWAI_TOOL_REPOSITORY_PASSWORD` e `CREWAI_ORG_UUID`) no caminho esperado pelo framework.
   - **Como Ativar o Tracing Nativo**:
-    1. Mantenha `CREWAI_TRACING_ENABLED=true` no [`.env`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/.env) e `tracing=True` na criação da `Crew` em `orchestrator.py` (já configurados).
-    2. Execute o comando **`crewai login`** no terminal local. Ele abrirá o navegador e autenticará sua máquina diretamente com a plataforma CrewAI.
-    3. Todos os traces de agentes, chamadas LLM e etapas serão transmitidos automaticamente de forma nativa e segura para a aba **"Traces"** do seu painel CrewAI.
+    1. Mantenha `CREWAI_TRACING_ENABLED=true` no [`.env`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/.env) e `tracing=True` na criação da `Crew` em `orchestrator.py`.
+    2. Obtenha as chaves salvas localmente no seu computador em `~/.config/crewai/settings.json`.
+    3. Configure as variáveis de ambiente no Render correspondentes a essas credenciais, permitindo o tracing transparente direto de produção.
 
 ### 2. Cache Semântico Hit não sendo atingido (Erro 404 Anthropic)
 * **Status**: 🟢 Resolvido e Homologado
@@ -95,3 +96,41 @@ Durante o ciclo de transição modular e testes de produção, identificamos e r
   - [`tests/test_api.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/tests/test_api.py): Script de teste automatizado que realiza login automático, aquisição de cookie e validação de rotas REST.
   - [`PROXIMOS_PASSOS.md`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/PROXIMOS_PASSOS.md): Planejamento e blueprint técnico detalhado para escalabilidade horizontal da CrewAI em produção.
   - [`PLANO_LATENCIA.md`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/PLANO_LATENCIA.md): Planejamento e blueprints de código para otimização extrema de latência da CrewAI localmente.
+
+## 🌐 Implantação em Produção (Render) e Solução de Problemas
+
+Registramos aqui a jornada de colocar o Monolito FastAPI / CrewAI em produção na plataforma **Render**, as decisões de arquitetura e a investigação em andamento dos fluxos de login em múltiplos dispositivos.
+
+### 1. Detalhes do Deploy no Render
+* **Tipo de Serviço:** Escolhido **Web Services** (Serviço Web dinâmico), pois a aplicação roda um servidor Python que processa IA em tempo real e fornece o Dashboard Glassmorphic.
+* **Ambiente de Execução:** Escolhemos **Docker** como linguagem. O Render detectou automaticamente o nosso `Dockerfile` de produção que:
+  - Isola o sistema operacional usando `python:3.11-slim`.
+  - Instala `build-essential` e dependências para que o banco de dados `sqlite3` e o hashing Bcrypt compilem e rodem sem falhas no ambiente Linux.
+  - Expõe e inicia o servidor Uvicorn escutando em `0.0.0.0:8000`.
+* **Deploy inicial:** Finalizado de primeira e com absoluto sucesso. A URL pública foi gerada como `https://production-crewai-system.onrender.com/login` e o banco foi populado com a semente automática do administrador (`admin` / `admin123`).
+
+### 2. Configurações de Variáveis de Ambiente e Tracing
+* **Langfuse Tracing:** Configurado no Render colando as chaves `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e `LANGFUSE_BASE_URL=https://cloud.langfuse.com` (sem aspas para evitar conflito de caracteres especiais).
+* **CrewAI AMP Tracing (Headless Autopopulate):** Com o nosso mecanismo de autopopulate de credenciais no bootstrap da aplicação, o Uvicorn gera as credenciais em `/root/.config/crewai/settings.json` na nuvem Render se as seguintes variáveis estiverem definidas:
+  - `CREWAI_TOOL_REPOSITORY_USERNAME`: Email de login.
+  - `CREWAI_TOOL_REPOSITORY_PASSWORD`: Token codificado da conta CLI.
+  - `CREWAI_ORG_UUID`: UUID da organização do CrewAI Platform.
+  Com isso, os traces de produção são exportados nativamente de forma instantânea para `app.crewai.com`!
+
+### 3. Persistência de Dados (Investigação do SQLite e Reset de Banco)
+* **Comportamento Efêmero do Render:** Descobrimos que, por padrão, o Render destrói o container anterior e seus arquivos locais (incluindo `customer_support.db`) toda vez que um novo deploy, alteração de env ou reinício automático por inatividade do plano Free acontece.
+* **Solução Homologada:** Para evitar a perda de dados e histórico, adicionamos a instrução de criar um **Disco Persistente (Disk)** no Render:
+  - **Mount Path:** `/app/data` (pasta onde o SQLite lê/grava os dados).
+  - **Tamanho:** `1 GiB` (mínimo).
+  - Com isso, as tabelas e usuários são mantidos permanentemente em um volume físico separado.
+
+### 4. Investigação do Fluxo de Login (Usuário "Sara")
+* **O Problema:** A usuária `Sara` (senha `S@ra140103`) se cadastrou pelo celular e utilizou o sistema com sucesso (incluindo fazer logout e login de novo com êxito em seu aparelho). No entanto, o operador ao tentar fazer o login a partir de seu computador pessoal (PC) na mesma URL de produção recebe "Usuário ou senha incorretos".
+* **Fatos Diagnosticados:**
+  - O teclado do PC está imprimindo o caractere `@` corretamente (testado no campo de texto aberto de usuário).
+  - A conta `Sara` está devidamente gravada no banco de dados do Render (pois a usuária ainda usa e se loga nela no celular).
+  - SQLite é **case-sensitive** (diferencia maiúsculas) para buscas de texto com `=`. O usuário deve ser escrito como `Sara` (e não `sara`).
+* **Próximos Passos de Depuração:**
+  - Investigar se há cookies de sessão ou tokens JWT residuais no navegador do PC que estejam gerando conflito de estado de rotas HTTP.
+  - Investigar se existem extensões bloqueadoras, antivírus ou gerenciadores de senhas no PC que modificam o payload JSON de envio no endpoint `/api/auth/login`.
+  - Investigar se o preenchimento automático inseriu espaços extras ocultos na digitação.
