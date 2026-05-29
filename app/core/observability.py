@@ -27,7 +27,7 @@ def setup_instrumentation():
         exporter = OTLPSpanExporter(
             endpoint="https://app.phoenix.arize.com/v1/traces",
             headers={
-                "api_key": phoenix_api_key,
+                "Authorization": f"Bearer {phoenix_api_key}",
                 "project_name": phoenix_project,
             }
         )

@@ -33,6 +33,7 @@ Durante o ciclo de transição modular e testes de produção, identificamos e r
   - **Estratégia de Observabilidade:** Para garantir monitoramento em tempo real de nível corporativo sem as complexidades de autenticação headless de CLI no Render e evitando conflitos com o TracerProvider interno da biblioteca do Phoenix (`arize-phoenix-otel`), migramos para uma abordagem de **OpenTelemetry Puro** usando `OTLPSpanExporter`.
   - **Instrumentadores Ativos:** Usamos o `opentelemetry-exporter-otlp-proto-http` junto com `CrewAIInstrumentor` (da OpenInference) para capturar a lógica de execução da Crew de forma direta e padronizada.
   - **Bypas de Conflitos OTel:** Configuramos manualmente o `TracerProvider` com o `BatchSpanProcessor` acoplado ao `OTLPSpanExporter` puro, e o passamos diretamente para o `CrewAIInstrumentor(tracer_provider=provider)`. Bypassamos completamente a chamada global `trace.set_tracer_provider(provider)`. Isso elimina 100% qualquer conflito de concorrência global de inicialização no OpenTelemetry!
+  - **Autenticação e Headers do Exporter:** Mapeamos que o coletor do Arize Phoenix exige a autenticação via cabeçalho `"Authorization": f"Bearer {phoenix_api_key}"` nos headers de requisição OTLP, validando a telemetria com sucesso.
   - **Configuração via Variáveis de Ambiente:** O sistema agora é configurado apenas pelas variáveis do Render `PHOENIX_API_KEY` e `PHOENIX_PROJECT_NAME`, enviando telemetria para a nuvem de forma nativa e assíncrona.
 
 ### 2. Cache Semântico Hit não sendo atingido (Erro 404 Anthropic)
