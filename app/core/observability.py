@@ -26,6 +26,7 @@ def setup_instrumentation():
             project_name=phoenix_project,
             api_key=phoenix_api_key,
             endpoint="https://app.phoenix.arize.com/v1/traces",
+            set_global_tracer_provider=False,
         )
 
         CrewAIInstrumentor().instrument(tracer_provider=tracer_provider)
