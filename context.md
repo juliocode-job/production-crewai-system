@@ -115,7 +115,8 @@ Registramos aqui a jornada de colocar o Monolito FastAPI / CrewAI em produção 
   - `CREWAI_TOOL_REPOSITORY_USERNAME`: Email de login.
   - `CREWAI_TOOL_REPOSITORY_PASSWORD`: Token codificado da conta CLI.
   - `CREWAI_ORG_UUID`: UUID da organização do CrewAI Platform.
-  Com isso, os traces de produção são exportados nativamente de forma instantânea para `app.crewai.com`!
+  - `CREWAI_PAT`: Personal Access Token (PAT) obtido no painel de configurações do CrewAI Platform.
+  Com isso, os traces de produção são autenticados e exportados nativamente de forma instantânea para `app.crewai.com`!
 
 ### 3. Persistência de Dados (Investigação do SQLite e Reset de Banco)
 * **Comportamento Efêmero do Render:** Descobrimos que, por padrão, o Render destrói o container anterior e seus arquivos locais (incluindo `customer_support.db`) toda vez que um novo deploy, alteração de env ou reinício automático por inatividade do plano Free acontece.

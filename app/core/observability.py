@@ -23,6 +23,7 @@ def setup_instrumentation():
         username = os.getenv("CREWAI_TOOL_REPOSITORY_USERNAME")
         password = os.getenv("CREWAI_TOOL_REPOSITORY_PASSWORD")
         org_uuid = os.getenv("CREWAI_ORG_UUID")
+        pat = os.getenv("CREWAI_PAT")
         
         if username and password:
             config_dir = os.path.expanduser("~/.config/crewai")
@@ -33,12 +34,13 @@ def setup_instrumentation():
                 "tool_repository_username": username,
                 "tool_repository_password": password,
                 "org_name": None,
-                "org_uuid": org_uuid
+                "org_uuid": org_uuid,
+                "token": pat
             }
             
             with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=4)
-            print(f"[Observabilidade] Tracing Nativo: Credenciais do CrewAI salvas com sucesso em '{config_file}'!")
+            print(f"[Observabilidade] Tracing Nativo: Credenciais e Token PAT do CrewAI salvos com sucesso em '{config_file}'!")
         else:
             print("[Observabilidade] Tracing Nativo: Nenhuma credencial do CrewAI CLI encontrada no ambiente (CREWAI_TOOL_REPOSITORY_USERNAME/PASSWORD).")
             print("[Observabilidade] Certifique-se de executar 'crewai login' no terminal local ou configurar as envs no Render.")
