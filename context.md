@@ -27,16 +27,12 @@ Desenvolvemos um sistema de atendimento ao cliente multicanal de alto nível com
 
 Durante o ciclo de transição modular e testes de produção, identificamos e resolvemos com precisão cirúrgica todos os problemas que bloqueavam a aplicação:
 
-### 1. Transição para o Tracing Nativo do CrewAI Platform (AMP)
-* **Status**: 🟢 Homologado e Automatizado em Produção (Render)
-* **Descobertas e Transição Aplicada**:
-  - **Gargalos e Erros OTel HTTP (404/Langfuse):** A exportação de telemetria OpenTelemetry (OTel) OTLP HTTP para nuvens públicas do Langfuse frequentemente resultava em erros HTTP 404 devido a conflitos de rotas de endpoint, diferenças de subpaths regionais e cabeçalhos de Basic Auth.
-  - **Injeção de Credenciais Headless para o Render:** O tracing nativo do CrewAI exige que o arquivo `~/.config/crewai/settings.json` esteja presente no servidor para autenticar na nuvem `app.crewai.com`. Em ambientes headless de container como o Render, não é possível rodar o login interativo CLI `crewai login`.
-  - **Solução de Autenticação Dinâmica:** Atualizamos o arquivo [`app/core/observability.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/core/observability.py) para gerar e injetar dinamicamente as credenciais da plataforma a partir de variáveis de ambiente (`CREWAI_TOOL_REPOSITORY_USERNAME`, `CREWAI_TOOL_REPOSITORY_PASSWORD` e `CREWAI_ORG_UUID`) no caminho esperado pelo framework.
-  - **Como Ativar o Tracing Nativo**:
-    1. Mantenha `CREWAI_TRACING_ENABLED=true` no [`.env`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/.env) e `tracing=True` na criação da `Crew` em `orchestrator.py`.
-    2. Obtenha as chaves salvas localmente no seu computador em `~/.config/crewai/settings.json`.
-    3. Configure as variáveis de ambiente no Render correspondentes a essas credenciais, permitindo o tracing transparente direto de produção.
+### 1. Transição para o Tracing via Arize Phoenix (OpenTelemetry)
+* **Status**: 🟢 Ativado e Homologado com Arize Phoenix
+* **Descobertas e Integração Aplicada**:
+  - **Estratégia de Observabilidade:** Para garantir monitoramento em tempo real de nível corporativo sem as complexidades de autenticação headless de CLI no Render, migramos a instrumentação para o **Arize Phoenix** usando OpenTelemetry padrão de mercado.
+  - **Instrumentadores Ativos:** Usamos o `arize-otel` junto com `CrewAIInstrumentor` (da OpenInference) e `LiteLLMInstrumentor` para capturar tanto a lógica de execução dos agentes quanto as chamadas diretas de modelo subjacentes feitas pelo LiteLLM.
+  - **Configuração via Variáveis de Ambiente:** O sistema agora é configurado dinamicamente pelas variáveis do Render `PHOENIX_API_KEY`, `PHOENIX_COLLECTOR_ENDPOINT` e `PHOENIX_PROJECT_NAME`.
 
 ### 2. Cache Semântico Hit não sendo atingido (Erro 404 Anthropic)
 * **Status**: 🟢 Resolvido e Homologado
@@ -111,12 +107,11 @@ Registramos aqui a jornada de colocar o Monolito FastAPI / CrewAI em produção 
 
 ### 2. Configurações de Variáveis de Ambiente e Tracing
 * **Langfuse Tracing:** Configurado no Render colando as chaves `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e `LANGFUSE_BASE_URL=https://cloud.langfuse.com` (sem aspas para evitar conflito de caracteres especiais).
-* **CrewAI AMP Tracing (Headless Autopopulate):** Com o nosso mecanismo de autopopulate de credenciais no bootstrap da aplicação, o Uvicorn gera as credenciais em `/root/.config/crewai/settings.json` na nuvem Render se as seguintes variáveis estiverem definidas:
-  - `CREWAI_TOOL_REPOSITORY_USERNAME`: Email de login.
-  - `CREWAI_TOOL_REPOSITORY_PASSWORD`: Token codificado da conta CLI.
-  - `CREWAI_ORG_UUID`: UUID da organização do CrewAI Platform.
-  - `CREWAI_PAT`: Personal Access Token (PAT) obtido no painel de configurações do CrewAI Platform.
-  Com isso, os traces de produção são autenticados e exportados nativamente de forma instantânea para `app.crewai.com`!
+* **Arize Phoenix Tracing (OpenTelemetry):** O Uvicorn inicializa a instrumentação global com o SDK do Arize Phoenix na inicialização do servidor se as seguintes variáveis de ambiente estiverem configuradas no Render:
+  - `PHOENIX_API_KEY`: A chave JWT de autenticação do Arize Phoenix.
+  - `PHOENIX_COLLECTOR_ENDPOINT`: Endpoint coletor (ex: `https://app.phoenix.arize.com/s/lemosfranca1234`).
+  - `PHOENIX_PROJECT_NAME`: O nome do projeto no dashboard (ex: `production-crew-support`).
+  Com isso, todas as interações e traces da Crew e do LiteLLM são enviados de forma nativa e segura para o Arize Phoenix!
 
 ### 3. Persistência de Dados (Investigação do SQLite e Reset de Banco)
 * **Comportamento Efêmero do Render:** Descobrimos que, por padrão, o Render destrói o container anterior e seus arquivos locais (incluindo `customer_support.db`) toda vez que um novo deploy, alteração de env ou reinício automático por inatividade do plano Free acontece.

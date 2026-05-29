@@ -8,44 +8,32 @@ from app.core import config
 _langfuse_handler = None
 
 def setup_instrumentation():
-    """
-    Inicializa a instrumentação da aplicação.
-    Para utilizar o Tracing Nativo do Dashboard Enterprise/Platform do CrewAI, 
-    nós delegamos o envio de telemetria diretamente ao próprio framework,
-    evitando coletores e exportadores customizados de terceiros em rede local.
-    Adicionalmente, se rodando em ambiente headless (como Render), configuramos
-    as credenciais de login da plataforma CrewAI dinamicamente se fornecidas por envs.
-    """
     try:
-        print("[Observabilidade] Inicializando instrumentação global...")
-        
-        # Obter credenciais do CrewAI Platform das variáveis de ambiente
-        username = os.getenv("CREWAI_TOOL_REPOSITORY_USERNAME")
-        password = os.getenv("CREWAI_TOOL_REPOSITORY_PASSWORD")
-        org_uuid = os.getenv("CREWAI_ORG_UUID")
-        pat = os.getenv("CREWAI_PAT")
-        
-        if username and password:
-            config_dir = os.path.expanduser("~/.config/crewai")
-            os.makedirs(config_dir, exist_ok=True)
-            config_file = os.path.join(config_dir, "settings.json")
-            
-            config_data = {
-                "tool_repository_username": username,
-                "tool_repository_password": password,
-                "org_name": None,
-                "org_uuid": org_uuid,
-                "token": pat
-            }
-            
-            with open(config_file, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=4)
-            print(f"[Observabilidade] Tracing Nativo: Credenciais e Token PAT do CrewAI salvos com sucesso em '{config_file}'!")
-        else:
-            print("[Observabilidade] Tracing Nativo: Nenhuma credencial do CrewAI CLI encontrada no ambiente (CREWAI_TOOL_REPOSITORY_USERNAME/PASSWORD).")
-            print("[Observabilidade] Certifique-se de executar 'crewai login' no terminal local ou configurar as envs no Render.")
-            
-        print("[Observabilidade] Utilizando o Tracing Nativo do Dashboard do CrewAI (AMP).")
+        print("[Observabilidade] Inicializando instrumentação global com Arize Phoenix...")
+
+        from arize.otel import register
+        from openinference.instrumentation.crewai import CrewAIInstrumentor
+        from openinference.instrumentation.litellm import LiteLLMInstrumentor
+
+        phoenix_api_key = os.getenv("PHOENIX_API_KEY")
+        phoenix_endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT")
+        phoenix_project = os.getenv("PHOENIX_PROJECT_NAME", "production-crew-support")
+
+        if not phoenix_api_key or not phoenix_endpoint:
+            print("[Observabilidade] PHOENIX_API_KEY ou PHOENIX_COLLECTOR_ENDPOINT não encontrados. Tracing desativado.")
+            return
+
+        tracer_provider = register(
+            endpoint=f"{phoenix_endpoint}/v1/traces",
+            project_name=phoenix_project,
+            api_key=phoenix_api_key,
+        )
+
+        CrewAIInstrumentor().instrument(tracer_provider=tracer_provider)
+        LiteLLMInstrumentor().instrument(tracer_provider=tracer_provider)
+
+        print(f"[Observabilidade] Arize Phoenix ativo! Projeto: {phoenix_project}")
+
     except Exception as e:
         print(f"[Observabilidade] Erro ao inicializar instrumentação: {e}")
 
