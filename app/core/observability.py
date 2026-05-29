@@ -6,6 +6,7 @@ from app.core import config
 
 # Variável de instância global (Singleton) para o CallbackHandler do Langfuse
 _langfuse_handler = None
+_tracer_provider = None
 
 def setup_instrumentation():
     try:
@@ -32,8 +33,10 @@ def setup_instrumentation():
             }
         )
 
+        global _tracer_provider
         provider = TracerProvider()
         provider.add_span_processor(BatchSpanProcessor(exporter))
+        _tracer_provider = provider
 
         CrewAIInstrumentor().instrument(tracer_provider=provider)
 
@@ -95,4 +98,17 @@ def flush_langfuse():
                 print("[Observabilidade] Aviso: Nenhum método de transmissão direta (flush) encontrado no Handler.")
         except Exception as e:
             print(f"[Observabilidade] Falha ao tentar forçar a transmissão dos traces: {e}")
+
+def flush_traces():
+    """
+    Força o envio imediato de todos os spans acumulados no BatchSpanProcessor do Arize Phoenix.
+    """
+    global _tracer_provider
+    if _tracer_provider is not None:
+        try:
+            _tracer_provider.force_flush()
+            print("[Observabilidade] Spans do Phoenix enviados (flushed) com sucesso!")
+        except Exception as e:
+            print(f"[Observabilidade] Erro ao fazer flush dos spans do Phoenix: {e}")
+
 

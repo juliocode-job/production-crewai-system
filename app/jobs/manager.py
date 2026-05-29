@@ -145,3 +145,10 @@ def run_crew_job(job_id: str, sanitized_inquiry: str):
     finally:
         # Garante a transmissão imediata dos traces ao Langfuse Cloud ao encerrar a thread
         flush_langfuse()
+        
+        # Garante a transmissão imediata dos traces/spans ao Arize Phoenix
+        try:
+            from app.core.observability import flush_traces
+            flush_traces()
+        except Exception as e:
+            print(f"[Observabilidade] Erro ao fazer flush dos spans do Phoenix no encerramento do Job: {e}")
