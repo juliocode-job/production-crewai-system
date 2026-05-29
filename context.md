@@ -31,8 +31,8 @@ Durante o ciclo de transição modular e testes de produção, identificamos e r
 * **Status**: 🟢 Ativado e Homologado com Arize Phoenix
 * **Descobertas e Integração Aplicada**:
   - **Estratégia de Observabilidade:** Para garantir monitoramento em tempo real de nível corporativo sem as complexidades de autenticação headless de CLI no Render, migramos a instrumentação para o **Arize Phoenix** usando OpenTelemetry padrão de mercado.
-  - **Instrumentadores Ativos:** Usamos o `arize-otel` junto com `CrewAIInstrumentor` (da OpenInference) e `LiteLLMInstrumentor` para capturar tanto a lógica de execução dos agentes quanto as chamadas diretas de modelo subjacentes feitas pelo LiteLLM.
-  - **Configuração via Variáveis de Ambiente:** O sistema agora é configurado dinamicamente pelas variáveis do Render `PHOENIX_API_KEY`, `PHOENIX_COLLECTOR_ENDPOINT` e `PHOENIX_PROJECT_NAME`.
+  - **Instrumentadores Ativos:** Usamos a biblioteca moderna `arize-phoenix-otel` junto com `CrewAIInstrumentor` (da OpenInference) e `LiteLLMInstrumentor` para capturar tanto a lógica de execução dos agentes quanto as chamadas diretas de modelo subjacentes feitas pelo LiteLLM.
+  - **Configuração via Variáveis de Ambiente:** O sistema agora é configurado de forma extremamente simplificada apenas pelas variáveis `PHOENIX_API_KEY` e `PHOENIX_PROJECT_NAME`, com o endpoint padrão do Arize Phoenix já pré-definido no código.
 
 ### 2. Cache Semântico Hit não sendo atingido (Erro 404 Anthropic)
 * **Status**: 🟢 Resolvido e Homologado
@@ -109,9 +109,8 @@ Registramos aqui a jornada de colocar o Monolito FastAPI / CrewAI em produção 
 * **Langfuse Tracing:** Configurado no Render colando as chaves `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e `LANGFUSE_BASE_URL=https://cloud.langfuse.com` (sem aspas para evitar conflito de caracteres especiais).
 * **Arize Phoenix Tracing (OpenTelemetry):** O Uvicorn inicializa a instrumentação global com o SDK do Arize Phoenix na inicialização do servidor se as seguintes variáveis de ambiente estiverem configuradas no Render:
   - `PHOENIX_API_KEY`: A chave JWT de autenticação do Arize Phoenix.
-  - `PHOENIX_COLLECTOR_ENDPOINT`: Endpoint coletor (ex: `https://app.phoenix.arize.com/s/lemosfranca1234`).
   - `PHOENIX_PROJECT_NAME`: O nome do projeto no dashboard (ex: `production-crew-support`).
-  Com isso, todas as interações e traces da Crew e do LiteLLM são enviados de forma nativa e segura para o Arize Phoenix!
+  Com isso, todas as interações e traces da Crew e do LiteLLM são enviados de forma nativa e segura para o Arize Phoenix usando o endpoint padrão `https://app.phoenix.arize.com/v1/traces`!
 
 ### 3. Persistência de Dados (Investigação do SQLite e Reset de Banco)
 * **Comportamento Efêmero do Render:** Descobrimos que, por padrão, o Render destrói o container anterior e seus arquivos locais (incluindo `customer_support.db`) toda vez que um novo deploy, alteração de env ou reinício automático por inatividade do plano Free acontece.

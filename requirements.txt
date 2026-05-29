@@ -12,5 +12,5 @@ python-dotenv
 sqlmodel
 python-jose[cryptography]
 passlib[bcrypt]
-arize-otel
+arize-phoenix-otel
 openinference-instrumentation-litellm

@@ -11,22 +11,21 @@ def setup_instrumentation():
     try:
         print("[Observabilidade] Inicializando instrumentação global com Arize Phoenix...")
 
-        from arize.otel import register
+        from phoenix.otel import register
         from openinference.instrumentation.crewai import CrewAIInstrumentor
         from openinference.instrumentation.litellm import LiteLLMInstrumentor
 
         phoenix_api_key = os.getenv("PHOENIX_API_KEY")
-        phoenix_endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT")
         phoenix_project = os.getenv("PHOENIX_PROJECT_NAME", "production-crew-support")
 
-        if not phoenix_api_key or not phoenix_endpoint:
-            print("[Observabilidade] PHOENIX_API_KEY ou PHOENIX_COLLECTOR_ENDPOINT não encontrados. Tracing desativado.")
+        if not phoenix_api_key:
+            print("[Observabilidade] PHOENIX_API_KEY não encontrado. Tracing desativado.")
             return
 
         tracer_provider = register(
-            endpoint=f"{phoenix_endpoint}/v1/traces",
             project_name=phoenix_project,
             api_key=phoenix_api_key,
+            endpoint="https://app.phoenix.arize.com/v1/traces",
         )
 
         CrewAIInstrumentor().instrument(tracer_provider=tracer_provider)
