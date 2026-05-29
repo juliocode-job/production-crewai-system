@@ -11,9 +11,11 @@ def setup_instrumentation():
     try:
         print("[Observabilidade] Inicializando instrumentação global com Arize Phoenix...")
 
-        from phoenix.otel import register
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         from openinference.instrumentation.crewai import CrewAIInstrumentor
-        from openinference.instrumentation.litellm import LiteLLMInstrumentor
 
         phoenix_api_key = os.getenv("PHOENIX_API_KEY")
         phoenix_project = os.getenv("PHOENIX_PROJECT_NAME", "production-crew-support")
@@ -22,15 +24,19 @@ def setup_instrumentation():
             print("[Observabilidade] PHOENIX_API_KEY não encontrado. Tracing desativado.")
             return
 
-        tracer_provider = register(
-            project_name=phoenix_project,
-            api_key=phoenix_api_key,
+        exporter = OTLPSpanExporter(
             endpoint="https://app.phoenix.arize.com/v1/traces",
-            set_global_tracer_provider=True,
+            headers={
+                "api_key": phoenix_api_key,
+                "project_name": phoenix_project,
+            }
         )
 
-        CrewAIInstrumentor().instrument(tracer_provider=tracer_provider)
-        LiteLLMInstrumentor().instrument(tracer_provider=tracer_provider)
+        provider = TracerProvider()
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+
+        CrewAIInstrumentor().instrument(tracer_provider=provider)
 
         print(f"[Observabilidade] Arize Phoenix ativo! Projeto: {phoenix_project}")
 

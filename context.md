@@ -27,13 +27,13 @@ Desenvolvemos um sistema de atendimento ao cliente multicanal de alto nível com
 
 Durante o ciclo de transição modular e testes de produção, identificamos e resolvemos com precisão cirúrgica todos os problemas que bloqueavam a aplicação:
 
-### 1. Transição para o Tracing via Arize Phoenix (OpenTelemetry)
-* **Status**: 🟢 Ativado e Homologado com Arize Phoenix
+### 1. Transição para o Tracing via Arize Phoenix (OpenTelemetry Puro)
+* **Status**: 🟢 Ativado e Homologado com OpenTelemetry OTLPSpanExporter
 * **Descobertas e Integração Aplicada**:
-  - **Estratégia de Observabilidade:** Para garantir monitoramento em tempo real de nível corporativo sem as complexidades de autenticação headless de CLI no Render, migramos a instrumentação para o **Arize Phoenix** usando OpenTelemetry padrão de mercado.
-  - **Instrumentadores Ativos:** Usamos a biblioteca moderna `arize-phoenix-otel` junto com `CrewAIInstrumentor` (da OpenInference) e `LiteLLMInstrumentor` para capturar tanto a lógica de execução dos agentes quanto as chamadas diretas de modelo subjacentes feitas pelo LiteLLM.
-  - **Resolução de Conflitos OTel (Ordem de Inicialização):** Para garantir o correto fluxo de telemetria, ativamos `set_global_tracer_provider=True` na chamada `register()` e movemos a chamada de `setup_instrumentation()` para o topo absoluto do [`app/main.py`](file:///c:/Users/lemos/OneDrive/Área de Trabalho/Customer-support-crew/app/main.py), antes de qualquer outro import de rotas ou orquestração.
-  - **Configuração via Variáveis de Ambiente:** O sistema agora é configurado de forma extremamente simplificada apenas pelas variáveis `PHOENIX_API_KEY` e `PHOENIX_PROJECT_NAME`, com o endpoint padrão do Arize Phoenix já pré-definido no código.
+  - **Estratégia de Observabilidade:** Para garantir monitoramento em tempo real de nível corporativo sem as complexidades de autenticação headless de CLI no Render e evitando conflitos com o TracerProvider interno da biblioteca do Phoenix (`arize-phoenix-otel`), migramos para uma abordagem de **OpenTelemetry Puro** usando `OTLPSpanExporter`.
+  - **Instrumentadores Ativos:** Usamos o `opentelemetry-exporter-otlp-proto-http` junto com `CrewAIInstrumentor` (da OpenInference) para capturar a lógica de execução da Crew de forma direta e padronizada.
+  - **Bypas de Conflitos OTel:** Configuramos manualmente o `TracerProvider` com o `BatchSpanProcessor` acoplado ao `OTLPSpanExporter` puro, definindo-o explicitamente como o TracerProvider global. Isso encerra de forma elegante e definitiva qualquer conflito de inicialização ou tentativa de sobrescrita.
+  - **Configuração via Variáveis de Ambiente:** O sistema agora é configurado apenas pelas variáveis do Render `PHOENIX_API_KEY` e `PHOENIX_PROJECT_NAME`, enviando telemetria para a nuvem de forma nativa e assíncrona.
 
 ### 2. Cache Semântico Hit não sendo atingido (Erro 404 Anthropic)
 * **Status**: 🟢 Resolvido e Homologado
