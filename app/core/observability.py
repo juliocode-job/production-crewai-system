@@ -34,7 +34,6 @@ def setup_instrumentation():
 
         provider = TracerProvider()
         provider.add_span_processor(BatchSpanProcessor(exporter))
-        trace.set_tracer_provider(provider)
 
         CrewAIInstrumentor().instrument(tracer_provider=provider)
 
