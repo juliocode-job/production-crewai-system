@@ -23,6 +23,7 @@ def setup_instrumentation():
         username = os.getenv("CREWAI_TOOL_REPOSITORY_USERNAME")
         password = os.getenv("CREWAI_TOOL_REPOSITORY_PASSWORD")
         org_uuid = os.getenv("CREWAI_ORG_UUID")
+        pat = os.getenv("CREWAI_PAT")  # Personal Access Token para autenticação do tracing no AMP
         
         if username and password:
             config_dir = os.path.expanduser("~/.config/crewai")
@@ -33,12 +34,17 @@ def setup_instrumentation():
                 "tool_repository_username": username,
                 "tool_repository_password": password,
                 "org_name": None,
-                "org_uuid": org_uuid
+                "org_uuid": org_uuid,
+                "token": pat  # Necessário para autenticar o tracing nativo com o AMP
             }
             
             with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=4)
-            print(f"[Observabilidade] Tracing Nativo: Credenciais do CrewAI salvas com sucesso em '{config_file}'!")
+            
+            if pat:
+                print(f"[Observabilidade] Tracing Nativo: Credenciais do CrewAI (incluindo PAT) salvas com sucesso em '{config_file}'!")
+            else:
+                print(f"[Observabilidade] Tracing Nativo: Credenciais salvas em '{config_file}', mas CREWAI_PAT não encontrado — tracing pode falhar na autenticação com o AMP.")
         else:
             print("[Observabilidade] Tracing Nativo: Nenhuma credencial do CrewAI CLI encontrada no ambiente (CREWAI_TOOL_REPOSITORY_USERNAME/PASSWORD).")
             print("[Observabilidade] Certifique-se de executar 'crewai login' no terminal local ou configurar as envs no Render.")
@@ -100,4 +106,3 @@ def flush_langfuse():
                 print("[Observabilidade] Aviso: Nenhum método de transmissão direta (flush) encontrado no Handler.")
         except Exception as e:
             print(f"[Observabilidade] Falha ao tentar forçar a transmissão dos traces: {e}")
-
